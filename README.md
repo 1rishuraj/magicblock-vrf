@@ -58,7 +58,7 @@ pub struct InitUser<'info> {
 
 ### 2. Request Randomness
 
-Submits a VRF randomness request via CPI to the VRF program. The seed is derived on-chain from `Clock::get()` (slot + unix_timestamp) and the payer's public key, ensuring uniqueness across multiple calls without requiring any client input.
+Submits a VRF randomness request via CPI to the VRF program. The seed is derived on-chain from `Clock::get()` (slot + unix_timestamp) and the payer's public key, ensuring uniqueness across multiple requests.
 
 ```rust
 #[vrf]
@@ -74,10 +74,11 @@ pub struct RequestRandomnessCtx<'info> {
 }
 ```
 
-The `#[vrf]` macro injects `program_identity`, `vrf_program`, `slot_hashes`, and `system_program` accounts automatically. The handler calls `invoke_signed_vrf` which signs the CPI using the program identity PDA.
+The `#[vrf]` macro injects `program_identity`, `vrf_program`, `slot_hashes`, and `system_program` accounts automatically. The handler calls `invoke_signed_vrf` which signs the CPI using the program's derived PDA seed.
 
-- **Task 1 (base layer)**: pass `DEFAULT_QUEUE` (`Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh`)
-- **Task 2 (inside ER)**: pass `DEFAULT_EPHEMERAL_QUEUE` (`5hBR571xnXppuCPveTrctfTU7tJLSN94nq7kv7FRK5Tc`)
+You must pass the appropriate oracle queue address to this instruction:
+- **Task 1 (base layer)**: pass the base layer oracle queue address
+- **Task 2 (inside ER)**: pass the ephemeral rollup oracle queue address
 
 ---
 
@@ -160,6 +161,6 @@ Closes the `UserAccount` PDA and returns rent lamports to the user.
 
 **Two-transaction pattern**: VRF always requires two separate transactions. The first submits the request; the second is the oracle callback. You cannot request and consume randomness in the same transaction.
 
-**On-chain seed derivation**: The request seed is derived inside the program using `Clock::get()` (slot + unix_timestamp) combined with the first 8 bytes of the payer's public key. This produces a unique `[u8; 32]` seed per call without any client input, preventing PDA collisions.
+**On-chain seed derivation**: The request seed is derived inside the program using `Clock::get()` (slot + unix_timestamp) combined with the first 8 bytes of the payer's public key. This produces a unique seed for each request.
 
 **Queue selection**: The base layer and ephemeral rollup use different oracle queues. Pass the correct queue from the client since the program accepts either.
